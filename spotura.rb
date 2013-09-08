@@ -1,10 +1,13 @@
 # coding: utf-8
 
-# Require support code, used by all the examples.
 require 'hallon'
+require 'pry'
+require './parser.rb'
 
-require "pry"
+# Kill main thread if any other thread dies.
+Thread.abort_on_exception = true
 
+# Init Spotify
 appkey_path = File.expand_path('./spotify_appkey.key')
 unless File.exists?(appkey_path)
   abort <<-ERROR
@@ -18,13 +21,11 @@ end
 
 hallon_username = ENV.fetch("SPOTIFY_USERNAME") { prompt("Please enter your spotify username") }
 hallon_password = ENV.fetch("SPOTIFY_PASSWORD") { prompt("Please enter your spotify password", hide: true) }
-hallon_appkey   = IO.read(appkey_path)
+hallon_appkey = IO.read(appkey_path)
 
 if hallon_username.empty? or hallon_password.empty?
   abort <<-ERROR
     Sorry, you must supply both username and password for Hallon to be able to log in.
-
-    You may also edit examples/common.rb by setting your username and password directly.
   ERROR
 end
 
@@ -38,7 +39,12 @@ session = Hallon::Session.initialize(hallon_appkey) do
   end
 
   on(:connection_error) do |error|
+    puts "[LOG] Connection error"
     Hallon::Error.maybe_raise(error)
+  end
+
+  on(:offline_error) do |error|
+    puts "[LOG] Offline error"
   end
 
   on(:logged_out) do
@@ -46,40 +52,36 @@ session = Hallon::Session.initialize(hallon_appkey) do
   end
 end
 session.login!(hallon_username, hallon_password)
-
 puts "Successfully logged in!"
-
 
 session = Hallon::Session.instance
 
-queries = [
-  'Billy Bang Da Bang!',
-  'Ben Lukas Boysen Gravity',
-  'Esmerine Dalmak',
-  'Ex Confusion With Love',
-  'Fazio Interiors' ]
+# Select the textura.org page by the letter
+letter = 'q'
 
+# Parsing
+list = Parser.parse_textura_archive(letter)
+
+# Create the playlist
 container = session.container
-playlist = container.add "Sept 2013 (textura.org)"
+playlist = container.add "#{ letter.capitalize } (textura.org)"
+playlist_tracks = []
 
-queries.each do |query|
-
+# Search for music
+list.each do |query|
   search = Hallon::Search.new(query)
 
-  puts "Searching for “#{query}”…"
+  puts "Searching for #{query}"
   search.load
 
-  if search.tracks.size.zero?
-    puts "No results for “#{search.query}”."
-  else
-    tracks = search.tracks[0...10].map(&:load)
-
-    puts "Results for “#{search.query}”: "
-    tracks.each_with_index do |track, index|
-      puts "  [#{index + 1}] #{track.name} — #{track.artist.name} (#{track.to_link.to_str})"
+  unless search.tracks.size.zero?
+    search.tracks.each do |track|
+      playlist_tracks.push(track)
     end
-    playlist.insert(0, tracks)
-    playlist.upload
   end
 
+  sleep 0.5
 end
+
+playlist.insert(0, playlist_tracks)
+playlist.upload

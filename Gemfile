@@ -1,4 +1,4 @@
-source :rubygems
+source 'https://rubygems.org'
 
 # Useful for testing out audio.
 unless ENV["TRAVIS"] # does not build on travis
@@ -10,3 +10,4 @@ gem 'pry'
 gem 'simplecov'
 gem 'yard'
 gem 'maruku'
+gem 'nokogiri'
