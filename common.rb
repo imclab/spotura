@@ -1,9 +1,3 @@
-# coding: utf-8
-
-require 'hallon'
-require 'pry'
-require './parser.rb'
-
 # Kill main thread if any other thread dies.
 Thread.abort_on_exception = true
 
@@ -53,35 +47,3 @@ session = Hallon::Session.initialize(hallon_appkey) do
 end
 session.login!(hallon_username, hallon_password)
 puts "Successfully logged in!"
-
-session = Hallon::Session.instance
-
-# Select the textura.org page by the letter
-letter = 'q'
-
-# Parsing
-list = Parser.parse_textura_archive(letter)
-
-# Create the playlist
-container = session.container
-playlist = container.add "#{ letter.capitalize } (textura.org)"
-playlist_tracks = []
-
-# Search for music
-list.each do |query|
-  search = Hallon::Search.new(query)
-
-  puts "Searching for #{query}"
-  search.load
-
-  unless search.tracks.size.zero?
-    search.tracks.each do |track|
-      playlist_tracks.push(track)
-    end
-  end
-
-  sleep 0.5
-end
-
-playlist.insert(0, playlist_tracks)
-playlist.upload
